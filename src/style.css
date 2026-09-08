@@ -1,0 +1,44 @@
+* { box-sizing: border-box; }
+
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #e5e7eb;
+  background: #080b12;
+  font-synthesis: none;
+}
+
+body { margin: 0; min-width: 320px; background: radial-gradient(circle at 50% -10%, #172033 0, #080b12 48%); }
+button { font: inherit; }
+.app { min-height: 100vh; }
+.topbar { height: 76px; padding: 0 6vw; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #202633; background: rgba(8,11,18,.82); backdrop-filter: blur(12px); }
+.brand { font-size: 22px; font-weight: 800; letter-spacing: -.5px; }
+.subtitle { color: #8e99aa; font-size: 12px; margin-top: 3px; }
+.status { color: #aab4c4; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+.status span { width: 8px; height: 8px; border-radius: 50%; background: #35d07f; box-shadow: 0 0 12px #35d07f; }
+.content { width: min(940px, 88vw); margin: 42px auto 70px; }
+.hero { display: flex; align-items: center; justify-content: space-between; gap: 30px; padding: 38px; border: 1px solid #252c39; border-radius: 24px; background: linear-gradient(135deg, rgba(23,32,51,.9), rgba(12,16,25,.9)); }
+.eyebrow { color: #8490a3; font-size: 11px; letter-spacing: 2px; margin: 0 0 12px; }
+h1 { margin: 0; font-size: clamp(30px, 5vw, 48px); line-height: 1.1; letter-spacing: -1.5px; }
+.hero p:not(.eyebrow) { color: #9ca6b7; max-width: 570px; line-height: 1.8; margin: 16px 0 0; }
+.orb { width: 112px; height: 112px; flex: 0 0 112px; display: grid; place-items: center; border-radius: 50%; font-size: 42px; background: #151d2d; border: 1px solid #30394b; box-shadow: 0 0 70px rgba(100,130,200,.12); }
+.section-head { display: flex; justify-content: space-between; align-items: center; margin: 34px 4px 14px; }
+h2 { margin: 0; }
+.section-head span { color: #7f8a9b; font-size: 13px; }
+.members { display: grid; gap: 10px; }
+.member { min-height: 76px; padding: 12px 16px; display: flex; align-items: center; gap: 14px; border: 1px solid #202735; border-radius: 16px; background: #0d111a; }
+.avatar, .call-avatar { display: grid; place-items: center; border-radius: 50%; background: #1c2535; border: 1px solid #313c50; font-weight: 700; }
+.avatar { width: 48px; height: 48px; }
+.member-info { flex: 1; }
+.member-info strong { display: block; font-size: 15px; }
+.member-info small { display: block; margin-top: 5px; color: #7f8a9b; font-size: 12px; }
+.call { width: 42px; height: 42px; border: 0; border-radius: 12px; cursor: pointer; color: white; background: #1e293b; }
+.call:hover:not(:disabled) { background: #334155; }
+.call:disabled { opacity: .35; cursor: not-allowed; }
+.call-overlay { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(3,5,9,.78); backdrop-filter: blur(12px); }
+.call-card { width: min(380px, 100%); text-align: center; padding: 42px 30px 30px; border: 1px solid #30394a; border-radius: 26px; background: #101620; box-shadow: 0 25px 80px rgba(0,0,0,.45); }
+.call-avatar { width: 82px; height: 82px; margin: 0 auto 18px; font-size: 28px; }
+.calling-label { color: #8e99aa; font-size: 13px; }
+.call-card h2 { margin-top: 8px; }
+.call-card p { color: #7f8a9b; margin: 8px 0 28px; }
+.hangup { width: 100%; border: 0; border-radius: 12px; padding: 13px 18px; color: white; background: #8f2f3b; cursor: pointer; }
+@media (max-width: 650px) { .hero { padding: 26px; } .orb { width: 76px; height: 76px; flex-basis: 76px; font-size: 28px; } }
