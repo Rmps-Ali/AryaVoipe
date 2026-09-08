@@ -7,90 +7,25 @@ type Member = { id: string; username: string; display_name?: string; displayName
 type PendingCall = { call_id: string; caller_id: string; caller_name: string; started_at: number }
 const API_URL = import.meta.env.VITE_API_URL || ''
 const api = (path: string, init?: RequestInit) => fetch(`${API_URL}${path}`, { credentials: 'include', ...init })
+const wsUrl = (callId: string) => { const base = new URL(API_URL || location.origin); base.protocol = base.protocol === 'https:' ? 'wss:' : 'ws:'; base.pathname = `/ws/${callId}`; base.search = ''; return base.toString() }
 
 function Login({ onLogin }: { onLogin: (user: any) => void }) {
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault(); setError('')
-    const r = await api('/api/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username, password }) })
-    const data = await r.json()
-    if (!r.ok) return setError(data.error || 'ورود ناموفق بود')
-    onLogin(data.user)
-  }
-  return <main className="app login" dir="rtl"><form className="login-card" onSubmit={submit}><div className="brand">AryaVoipe</div><p className="subtitle">ورود به ارتباط صوتی سازمان</p><input value={username} onChange={e => setUsername(e.target.value)} placeholder="نام کاربری" autoComplete="username"/><input value={password} onChange={e => setPassword(e.target.value)} placeholder="رمز عبور" type="password" autoComplete="current-password"/><button className="primary" type="submit">ورود</button>{error && <p className="error">{error}</p>}</form></main>
+  const [username, setUsername] = useState(''); const [password, setPassword] = useState(''); const [error, setError] = useState('')
+  const submit = async (e: React.FormEvent) => { e.preventDefault(); setError(''); const r=await api('/api/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({username,password})});const data=await r.json();if(!r.ok)return setError(data.error||'ورود ناموفق بود');onLogin(data.user) }
+  return <main className="app login" dir="rtl"><form className="login-card" onSubmit={submit}><div className="brand">AryaVoipe</div><p className="subtitle">ورود به ارتباط صوتی سازمان</p><input value={username} onChange={e=>setUsername(e.target.value)} placeholder="نام کاربری" autoComplete="username"/><input value={password} onChange={e=>setPassword(e.target.value)} placeholder="رمز عبور" type="password" autoComplete="current-password"/><button className="primary" type="submit">ورود</button>{error&&<p className="error">{error}</p>}</form></main>
 }
 
 function App({ user, onLogout }: { user: any; onLogout: () => void }) {
-  const [members, setMembers] = useState<Member[]>([])
-  const [pending, setPending] = useState<PendingCall | null>(null)
-  const [selected, setSelected] = useState<Member | null>(null)
-  const [calling, setCalling] = useState(false)
-  const [status, setStatus] = useState<CallState | 'ready'>('ready')
-  const callRef = useRef<AudioCall | null>(null)
-
-  const stateText: Record<string, string> = { ready: 'آماده', connecting: 'در حال اتصال...', ringing: 'در حال زنگ خوردن...', connected: 'در حال مکالمه', ended: 'تماس پایان یافت', error: 'خطا در تماس' }
-
-  useEffect(() => {
-    api('/api/members').then(r => r.ok ? r.json() : []).then((data: Member[]) => setMembers(data.map(m => ({ ...m, online: true })))).catch(() => {})
-  }, [])
-
-  useEffect(() => {
-    const timer = window.setInterval(async () => {
-      if (calling || pending) return
-      try {
-        const r = await api('/api/calls/pending')
-        if (!r.ok) return
-        const rows = await r.json() as PendingCall[]
-        if (rows[0]) setPending(rows[0])
-      } catch {}
-    }, 2000)
-    return () => window.clearInterval(timer)
-  }, [calling, pending])
-
-  const openCall = async (callId: string, member: Member | null, initiator: boolean) => {
-    const target = member || { id: '', display_name: pending?.caller_name || 'تماس ورودی', role: '' }
-    setSelected(target as Member); setCalling(true); setStatus('connecting')
-    const ws = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}${API_URL}/ws/${callId}`
-    const call = new AudioCall(); callRef.current = call
-    await call.start(callId, ws, initiator, user.id, setStatus)
-    if (!initiator) call.accept()
-  }
-
-  const startCall = async (member: Member) => {
-    try {
-      const r = await api('/api/calls', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ calleeId: member.id }) })
-      const data = await r.json()
-      if (!r.ok) throw new Error(data.error)
-      await openCall(data.callId, member, true)
-    } catch { setStatus('error') }
-  }
-
-  const acceptIncoming = async () => {
-    if (!pending) return
-    const incoming = pending; setPending(null)
-    await openCall(incoming.call_id, null, false)
-  }
-
-  const rejectIncoming = () => { setPending(null) }
-
-  const endCall = () => { callRef.current?.hangup(); callRef.current = null; setCalling(false); setSelected(null); setStatus('ready') }
-
-  return <main className="app" dir="rtl">
-    <header className="topbar"><div><div className="brand">AryaVoipe</div><div className="subtitle">{user.displayName} · ارتباط صوتی داخلی سازمان</div></div><div className="top-actions"><div className="status"><span/> {stateText[status]}</div><button onClick={async () => { await api('/api/auth/logout', { method: 'POST' }); onLogout() }}>خروج</button></div></header>
-    <section className="content"><div className="hero"><div><p className="eyebrow">VOICE · PRIVATE · SIMPLE</p><h1>ارتباط داخلی، بدون پیچیدگی</h1><p>با اعضای سازمان تماس صوتی مستقیم برقرار کنید.</p></div><div className="orb">☎</div></div><div className="section-head"><h2>اعضای سازمان</h2><span>{members.length} عضو</span></div><div className="members">{members.map(member => <article className="member" key={member.id}><div className="avatar">{(member.display_name || member.username).slice(0,1)}</div><div className="member-info"><strong>{member.display_name || member.username}</strong><small>{member.department || member.role}</small></div><button className="call" onClick={() => startCall(member)}>☎</button></article>)}</div></section>
-    {pending && !calling && <div className="call-overlay"><div className="call-card"><div className="call-avatar">{pending.caller_name.slice(0,1)}</div><span className="calling-label">تماس ورودی</span><h2>{pending.caller_name}</h2><p>درخواست تماس صوتی</p><div className="incoming-actions"><button className="primary" onClick={acceptIncoming}>پاسخ</button><button className="hangup" onClick={rejectIncoming}>رد تماس</button></div></div></div>}
-    {calling && selected && <div className="call-overlay"><div className="call-card"><div className="call-avatar">{(selected.display_name || selected.displayName || '?').slice(0,1)}</div><span className="calling-label">{stateText[status]}</span><h2>{selected.display_name || selected.displayName}</h2><p>تماس صوتی فقط صدا</p><button className="hangup" onClick={endCall}>پایان تماس</button></div></div>}
-  </main>
+  const [members,setMembers]=useState<Member[]>([]);const [pending,setPending]=useState<PendingCall|null>(null);const [selected,setSelected]=useState<Member|null>(null);const [calling,setCalling]=useState(false);const [status,setStatus]=useState<CallState|'ready'>('ready');const callRef=useRef<AudioCall|null>(null)
+  const stateText:Record<string,string>={ready:'آماده',connecting:'در حال اتصال...',ringing:'در حال زنگ خوردن...',connected:'در حال مکالمه',ended:'تماس پایان یافت',error:'خطا در تماس'}
+  useEffect(()=>{api('/api/members').then(r=>r.ok?r.json():[]).then((data:Member[])=>setMembers(data.map(m=>({...m,online:true})))).catch(()=>{})},[])
+  useEffect(()=>{const timer=window.setInterval(async()=>{if(calling||pending)return;try{const r=await api('/api/calls/pending');if(!r.ok)return;const rows=await r.json() as PendingCall[];if(rows[0])setPending(rows[0])}catch{}},2000);return()=>window.clearInterval(timer)},[calling,pending])
+  const openCall=async(callId:string,member:Member|null,initiator:boolean)=>{const target=member||({id:'',display_name:pending?.caller_name||'تماس ورودی',role:''} as Member);setSelected(target);setCalling(true);setStatus('connecting');const call=new AudioCall();callRef.current=call;await call.start(callId,wsUrl(callId),initiator,user.id,setStatus);if(!initiator)call.accept()}
+  const startCall=async(member:Member)=>{try{const r=await api('/api/calls',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({calleeId:member.id})});const data=await r.json();if(!r.ok)throw new Error(data.error);await openCall(data.callId,member,true)}catch{setStatus('error')}}
+  const acceptIncoming=async()=>{if(!pending)return;const incoming=pending;setPending(null);await openCall(incoming.call_id,null,false)}
+  const rejectIncoming=()=>setPending(null)
+  const endCall=()=>{callRef.current?.hangup();callRef.current=null;setCalling(false);setSelected(null);setStatus('ready')}
+  return <main className="app" dir="rtl"><header className="topbar"><div><div className="brand">AryaVoipe</div><div className="subtitle">{user.displayName} · ارتباط صوتی داخلی سازمان</div></div><div className="top-actions"><div className="status"><span/> {stateText[status]}</div><button onClick={async()=>{await api('/api/auth/logout',{method:'POST'});onLogout()}}>خروج</button></div></header><section className="content"><div className="hero"><div><p className="eyebrow">VOICE · PRIVATE · SIMPLE</p><h1>ارتباط داخلی، بدون پیچیدگی</h1><p>با اعضای سازمان تماس صوتی مستقیم برقرار کنید.</p></div><div className="orb">☎</div></div><div className="section-head"><h2>اعضای سازمان</h2><span>{members.length} عضو</span></div><div className="members">{members.map(member=><article className="member" key={member.id}><div className="avatar">{(member.display_name||member.username).slice(0,1)}</div><div className="member-info"><strong>{member.display_name||member.username}</strong><small>{member.department||member.role}</small></div><button className="call" onClick={()=>startCall(member)}>☎</button></article>)}</div></section>{pending&&!calling&&<div className="call-overlay"><div className="call-card"><div className="call-avatar">{pending.caller_name.slice(0,1)}</div><span className="calling-label">تماس ورودی</span><h2>{pending.caller_name}</h2><p>درخواست تماس صوتی</p><div className="incoming-actions"><button className="primary" onClick={acceptIncoming}>پاسخ</button><button className="hangup" onClick={rejectIncoming}>رد تماس</button></div></div></div>}{calling&&selected&&<div className="call-overlay"><div className="call-card"><div className="call-avatar">{(selected.display_name||selected.displayName||'?').slice(0,1)}</div><span className="calling-label">{stateText[status]}</span><h2>{selected.display_name||selected.displayName}</h2><p>تماس صوتی فقط صدا</p><button className="hangup" onClick={endCall}>پایان تماس</button></div></div>}</main>
 }
-
-function Root() {
-  const [user, setUser] = useState<any | null>(null)
-  const [loading, setLoading] = useState(true)
-  useEffect(() => { api('/api/me').then(r => r.ok ? r.json() : null).then(data => setUser(data?.user || null)).finally(() => setLoading(false)) }, [])
-  if (loading) return <main className="app" dir="rtl"><div className="loading">در حال بارگذاری...</div></main>
-  return user ? <App user={user} onLogout={() => setUser(null)} /> : <Login onLogin={setUser} />
-}
-
+function Root(){const[user,setUser]=useState<any|null>(null);const[loading,setLoading]=useState(true);useEffect(()=>{api('/api/me').then(r=>r.ok?r.json():null).then(data=>setUser(data?.user||null)).finally(()=>setLoading(false))},[]);if(loading)return <main className="app" dir="rtl"><div className="loading">در حال بارگذاری...</div></main>;return user?<App user={user} onLogout={()=>setUser(null)}/>:<Login onLogin={setUser}/>}
 createRoot(document.getElementById('root')!).render(<Root />)
