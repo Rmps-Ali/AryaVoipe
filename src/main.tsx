@@ -1,25 +1,69 @@
-import React, { useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import './style.css';
+import { useEffect, useState } from 'react'
+import { createRoot } from 'react-dom/client'
+import './style.css'
+import { AudioCall } from './lib/webrtc'
 
-type Member = { name: string; role: string; online: boolean };
+type Member = { id: string; name: string; role: string; online: boolean }
 
-const members: Member[] = [
-  { name: 'مدیر سیستم', role: 'مدیریت', online: true },
-  { name: 'عضو نمونه ۱', role: 'حقوقی', online: true },
-  { name: 'عضو نمونه ۲', role: 'پژوهش', online: false },
-  { name: 'عضو نمونه ۳', role: 'اداری', online: true },
-];
+const fallbackMembers: Member[] = [
+  { id: 'admin', name: 'مدیر سیستم', role: 'مدیریت', online: true },
+  { id: 'member-1', name: 'عضو نمونه ۱', role: 'حقوقی', online: true },
+  { id: 'member-2', name: 'عضو نمونه ۲', role: 'پژوهش', online: false },
+  { id: 'member-3', name: 'عضو نمونه ۳', role: 'اداری', online: true },
+]
+
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 function App() {
-  const [selected, setSelected] = useState<Member | null>(null);
-  const [calling, setCalling] = useState(false);
+  const [members, setMembers] = useState<Member[]>(fallbackMembers)
+  const [selected, setSelected] = useState<Member | null>(null)
+  const [calling, setCalling] = useState(false)
+  const [status, setStatus] = useState('آماده')
+  const [call, setCall] = useState<AudioCall | null>(null)
 
-  const startCall = (member: Member) => {
-    if (!member.online) return;
-    setSelected(member);
-    setCalling(true);
-  };
+  useEffect(() => {
+    if (!API_URL) return
+    fetch(`${API_URL}/api/members`)
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then((data: Member[]) => setMembers(data.map((m) => ({ ...m, online: true }))))
+      .catch(() => undefined)
+  }, [])
+
+  const startCall = async (member: Member) => {
+    if (!member.online) return
+    setSelected(member)
+    setCalling(true)
+    setStatus('در حال اتصال...')
+
+    if (!API_URL) {
+      setStatus('Backend هنوز متصل نشده')
+      return
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/api/call-room`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      if (!response.ok) throw new Error('room failed')
+      const data = await response.json() as { websocket: string }
+      const instance = new AudioCall()
+      setCall(instance)
+      await instance.start(data.websocket, data.websocket, true, setStatus)
+      setStatus('در حال تماس صوتی')
+    } catch {
+      setStatus('اتصال تماس ناموفق بود')
+    }
+  }
+
+  const endCall = () => {
+    call?.hangup()
+    setCall(null)
+    setCalling(false)
+    setSelected(null)
+    setStatus('آماده')
+  }
 
   return (
     <main className="app" dir="rtl">
@@ -28,7 +72,7 @@ function App() {
           <div className="brand">AryaVoipe</div>
           <div className="subtitle">ارتباط صوتی داخلی سازمان</div>
         </div>
-        <div className="status"><span /> آنلاین</div>
+        <div className="status"><span /> {status}</div>
       </header>
 
       <section className="content">
@@ -43,23 +87,18 @@ function App() {
 
         <div className="section-head">
           <h2>اعضای سازمان</h2>
-          <span>{members.filter(m => m.online).length} نفر آنلاین</span>
+          <span>{members.filter((m) => m.online).length} نفر آنلاین</span>
         </div>
 
         <div className="members">
-          {members.map(member => (
-            <article className="member" key={member.name}>
+          {members.map((member) => (
+            <article className="member" key={member.id}>
               <div className="avatar">{member.name.slice(0, 1)}</div>
               <div className="member-info">
                 <strong>{member.name}</strong>
                 <small>{member.role} · {member.online ? 'آنلاین' : 'آفلاین'}</small>
               </div>
-              <button
-                className="call"
-                disabled={!member.online}
-                onClick={() => startCall(member)}
-                aria-label={`تماس با ${member.name}`}
-              >☎</button>
+              <button className="call" disabled={!member.online} onClick={() => startCall(member)} aria-label={`تماس با ${member.name}`}>☎</button>
             </article>
           ))}
         </div>
@@ -69,17 +108,15 @@ function App() {
         <div className="call-overlay">
           <div className="call-card">
             <div className="call-avatar">{selected.name.slice(0, 1)}</div>
-            <span className="calling-label">در حال برقراری تماس</span>
+            <span className="calling-label">{status}</span>
             <h2>{selected.name}</h2>
-            <p>تماس صوتی امن</p>
-            <button className="hangup" onClick={() => setCalling(false)}>پایان تماس</button>
+            <p>تماس صوتی فقط صدا</p>
+            <button className="hangup" onClick={endCall}>پایان تماس</button>
           </div>
         </div>
       )}
     </main>
-  );
+  )
 }
 
-createRoot(document.getElementById('root')!).render(
-  <React.StrictMode><App /></React.StrictMode>
-);
+createRoot(document.getElementById('root')!).render(<App />)
