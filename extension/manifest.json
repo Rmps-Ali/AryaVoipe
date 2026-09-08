@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "AryaVoipe",
+  "version": "0.1.0",
+  "description": "AryaVoipe organizational audio calling client",
+  "permissions": ["notifications", "storage"],
+  "host_permissions": ["https://*/*"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_title": "AryaVoipe" }
+}
