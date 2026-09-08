@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "aryavoipe-api",
+  "main": "worker/src/index.ts",
+  "compatibility_date": "2026-09-08",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "aryavoipe",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "CALL_SIGNAL",
+        "class_name": "CallSignal"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["CallSignal"]
+    }
+  ]
+}
