@@ -1,7 +1,3 @@
-import { createHash } from 'node:crypto';
-
-// Password hashing is performed with Web Crypto in the Worker runtime.
-// PBKDF2 is intentionally used here because it is available natively in Workers.
 const ITERATIONS = 210_000;
 const HASH_ALG = 'SHA-256';
 
@@ -29,6 +25,11 @@ export async function verifyPassword(password: string, encoded: string) {
 
 export function createSessionToken() {
   return bytesToHex(crypto.getRandomValues(new Uint8Array(32)));
+}
+
+export async function hashToken(token: string) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  return bytesToHex(new Uint8Array(digest));
 }
 
 export function sessionCookie(token: string) {
